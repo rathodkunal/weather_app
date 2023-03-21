@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import com.example.weatherapplication.compose.PrefManager
 import com.example.weatherapplication.compose.SearchBarCompose
 import com.example.weatherapplication.compose.WeatherDetailCompose
 import com.example.weatherapplication.ui.theme.WeatherApplicationTheme
@@ -42,13 +43,26 @@ class MainActivity : ComponentActivity() {
 
     private val weatherViewModel: WeatherViewModel by viewModel()
 
+    var prefManager: PrefManager? = null
+
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private val permissionId = 2
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        //checking if the prefManager is null then create instance of it
+        prefManager ?: kotlin.run {
+            prefManager = PrefManager(this@MainActivity)
+        }
+
+        //if its not null and we have any last search, then make api call
+        prefManager?.getLastSearch()?.let {
+            weatherViewModel.fetchWeatherInfo(it)
+        }
+
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        getLocation()
 
         setContent {
             WeatherApplicationTheme {
@@ -64,7 +78,12 @@ class MainActivity : ComponentActivity() {
                                 .padding(16.dp),
                             onHideKeyBoard = ::onHideKeyboard
                         ) {
+                            //making api call to fetch weather info
                             weatherViewModel.fetchWeatherInfo(it)
+
+                            //after api call, saved that search key to shared preferences
+                            prefManager?.saveLastSearch(it)
+
                         }
 
                         WeatherDetailCompose(weatherViewModel)
@@ -78,12 +97,11 @@ class MainActivity : ComponentActivity() {
     /**
      * Hide the keyboard when user search any key
      * */
-    private fun onHideKeyboard(){
+    private fun onHideKeyboard() {
         hideKeyboard()
     }
 
-
-    @SuppressLint("MissingPermission", "SetTextI18n")
+    @SuppressLint("MissingPermission")
     private fun getLocation() {
         if (checkPermissions()) {
             if (isLocationEnabled()) {
@@ -93,9 +111,16 @@ class MainActivity : ComponentActivity() {
                         val geocoder = Geocoder(this, Locale.getDefault())
 
                         val list: List<Address> =
-                            geocoder.getFromLocation(location.latitude, location.longitude, 1) as List<Address>
+                            geocoder.getFromLocation(
+                                location.latitude,
+                                location.longitude,
+                                1
+                            ) as List<Address>
 
-                        weatherViewModel.fetchWeatherInfoUsingLatLong(list[0].latitude.toString(),list[0].longitude.toString())
+                        weatherViewModel.fetchWeatherInfoUsingLatLong(
+                            list[0].latitude.toString(),
+                            list[0].longitude.toString()
+                        )
                     }
                 }
             } else {
@@ -143,7 +168,7 @@ class MainActivity : ComponentActivity() {
             this,
             arrayOf(
                 Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION
+                Manifest.permission.ACCESS_FINE_LOCATION,
             ),
             permissionId
         )
