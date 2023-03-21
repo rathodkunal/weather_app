@@ -99,4 +99,6 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:4.0.0'
     androidTestImplementation 'org.mockito:mockito-android:2.24.5'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.1'
+
+    testImplementation "org.koin:koin-test:$koin_version"
 }
